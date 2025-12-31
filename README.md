@@ -1,3 +1,14 @@
+---
+title: Social Signal AI
+emoji: 🌊
+colorFrom: blue
+colorTo: purple
+sdk: static
+pinned: false
+app_file: dist/index.html
+app_build_command: npm install && npm run build
+---
+
 # 🌊 Social Signal AI (formerly First Convo Starter)
 
 Stop sending "Hey." Start sending messages that actually get replies.
@@ -12,4 +23,5 @@ Social Signal is a React-based AI application that generates unique, polite, and
 
 ### 🛠️ Tech Stack
 * **Frontend:** React + TypeScript (Vite)
+* **AI Model:** Google Gemini 1.5 Flash (via Gemini API)
 * **Styling:** CSS / Tailwind
