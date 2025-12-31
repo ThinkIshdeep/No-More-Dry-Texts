@@ -1,17 +1,19 @@
-import { GoogleGenAI, SchemaType } from "@google/genai"; // Note: Use SchemaType if Type isn't working
+import { GoogleGenAI, SchemaType } from "@google/genai";
 import { SignalResponse, RelationshipLevel } from "../types";
 
-// FIX 1: Use import.meta.env for Vite and ensure variable starts with VITE_
+// FIX: Use import.meta.env to access the variable in Vite/Vercel
 const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 
+// Safety check to warn you in the console if the key is missing
 if (!apiKey) {
-  console.error("API Key is missing! Check your .env file.");
+  console.error("⚠️ API Key is missing! Check your Vercel Environment Variables.");
 }
 
+// Initialize the client
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
 const SYSTEM_INSTRUCTION = `
-You are a Social Intelligence Coach. Your job is to generate conversation starters that are clever, polite, and context-aware. 
+You are a Social Intelligence Coach. Your job is to generate conversation starters that are clever, polite, and context-aware.
 
 Instructions:
 Analyze the user's input (Text or Image) and the specified RELATIONSHIP LEVEL.
@@ -39,10 +41,12 @@ export const generateSignal = async (targetDetail: string, relationship: Relatio
   try {
     const parts: any[] = [];
     
-    // FIX 2: Dynamic Mime Type Handling
+    // FIX: Handle Image Mime Types dynamically
     if (imageBase64) {
-      // Detect mime type from the base64 string header (e.g., data:image/png;base64,...)
+      // 1. Extract the mime type (e.g., 'image/png') from the base64 string
       const mimeType = imageBase64.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || "image/jpeg";
+      
+      // 2. Extract just the data (remove the "data:image/..." prefix)
       const base64Data = imageBase64.split(',')[1] || imageBase64;
 
       parts.push({
@@ -53,13 +57,15 @@ export const generateSignal = async (targetDetail: string, relationship: Relatio
       });
     }
 
+    // Add the text prompt
     parts.push({
       text: `Context/Input: "${targetDetail}"\nRelationship Level: "${relationship}"`
     });
 
+    // Call the API
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp", // Update to a stable model ID if 'preview' fails, or keep 'gemini-1.5-flash'
-      contents: { role: "user", parts: parts }, // 'role' is often required in the new SDK structure
+      model: "gemini-2.0-flash-exp", // You can change this to "gemini-1.5-flash" if 2.0 is unstable
+      contents: { role: "user", parts: parts },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
@@ -75,7 +81,7 @@ export const generateSignal = async (targetDetail: string, relationship: Relatio
       },
     });
 
-    const text = response.text(); // Note: In newer SDKs, text might be a function: text()
+    const text = response.text();
     if (!text) throw new Error("No text returned from Gemini");
 
     return JSON.parse(text) as SignalResponse;
