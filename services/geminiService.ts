@@ -1,27 +1,18 @@
 import { GoogleGenAI, SchemaType } from "@google/genai";
 import { SignalResponse, RelationshipLevel } from "../types";
 
-// FIX: Use import.meta.env to access the variable in Vite/Vercel
-const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-
-// Safety check to warn you in the console if the key is missing
-if (!apiKey) {
-  console.error("⚠️ API Key is missing! Check your Vercel Environment Variables.");
-}
-
-// Initialize the client
-const ai = new GoogleGenAI({ apiKey: apiKey });
+// Remove the global initialization that crashes the app
+// const ai = new GoogleGenAI... (DELETE THIS LINE)
 
 const SYSTEM_INSTRUCTION = `
 You are a Social Intelligence Coach. Your job is to generate conversation starters that are clever, polite, and context-aware.
-
 Instructions:
 Analyze the user's input (Text or Image) and the specified RELATIONSHIP LEVEL.
-Generate exactly 3 distinct conversation starter options based on the logic below.
+Generate exactly 3 distinct conversation starter options.
 
 LOGIC BY RELATIONSHIP LEVEL:
-1. RELATIONSHIP: "Random/Unknown" -> Polite Curiosity. Safety first. No flirting.
-2. RELATIONSHIP: "Single" -> Low-Stakes Charm. Playful but respectful.
+1. RELATIONSHIP: "Random/Unknown" -> Polite Curiosity. Safety first.
+2. RELATIONSHIP: "Single" -> Low-Stakes Charm. Playful.
 3. RELATIONSHIP: "Friend" -> Relatable Vibe. Chill.
 4. RELATIONSHIP: "Close Friend" -> Unhinged/Direct. Roast them.
 5. RELATIONSHIP: "Partner" -> Affectionate or Roast.
@@ -39,14 +30,20 @@ Strict Rules:
 
 export const generateSignal = async (targetDetail: string, relationship: RelationshipLevel, imageBase64?: string): Promise<SignalResponse> => {
   try {
+    // 1. SAFE LOAD: Only get the key when the function runs
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("API Key is missing in Vercel! Check Environment Variables.");
+    }
+
+    // 2. INITIALIZE HERE: Start the AI only when needed
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+
     const parts: any[] = [];
     
-    // FIX: Handle Image Mime Types dynamically
     if (imageBase64) {
-      // 1. Extract the mime type (e.g., 'image/png') from the base64 string
       const mimeType = imageBase64.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || "image/jpeg";
-      
-      // 2. Extract just the data (remove the "data:image/..." prefix)
       const base64Data = imageBase64.split(',')[1] || imageBase64;
 
       parts.push({
@@ -57,14 +54,12 @@ export const generateSignal = async (targetDetail: string, relationship: Relatio
       });
     }
 
-    // Add the text prompt
     parts.push({
       text: `Context/Input: "${targetDetail}"\nRelationship Level: "${relationship}"`
     });
 
-    // Call the API
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp", // You can change this to "gemini-1.5-flash" if 2.0 is unstable
+      model: "gemini-2.0-flash-exp", 
       contents: { role: "user", parts: parts },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -72,9 +67,9 @@ export const generateSignal = async (targetDetail: string, relationship: Relatio
         responseSchema: {
           type: SchemaType.OBJECT,
           properties: {
-            observer: { type: SchemaType.STRING, description: "Background detail opener" },
-            question: { type: SchemaType.STRING, description: "Specific question opener" },
-            witty: { type: SchemaType.STRING, description: "Playful opener" },
+            observer: { type: SchemaType.STRING },
+            question: { type: SchemaType.STRING },
+            witty: { type: SchemaType.STRING },
           },
           required: ["observer", "question", "witty"],
         },
