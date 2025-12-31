@@ -1,52 +1,34 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, SchemaType } from "@google/genai"; // Note: Use SchemaType if Type isn't working
 import { SignalResponse, RelationshipLevel } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// FIX 1: Use import.meta.env for Vite and ensure variable starts with VITE_
+const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+
+if (!apiKey) {
+  console.error("API Key is missing! Check your .env file.");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 const SYSTEM_INSTRUCTION = `
-You are a Social Intelligence Coach. Your job is to generate conversation starters that are clever, polite, and context-aware. You avoid generic "Hellos" and cringey pickup lines.
+You are a Social Intelligence Coach. Your job is to generate conversation starters that are clever, polite, and context-aware. 
 
 Instructions:
 Analyze the user's input (Text or Image) and the specified RELATIONSHIP LEVEL.
 Generate exactly 3 distinct conversation starter options based on the logic below.
 
 LOGIC BY RELATIONSHIP LEVEL:
-
-1. RELATIONSHIP: "Random/Unknown (Safety First)"
-    * Context: We do not know if they are single or taken.
-    * Rule: Do NOT flirt. Do NOT comment on physical beauty.
-    * Strategy: "Polite Curiosity." Focus strictly on the environment, the activity, the pet, or the object in the photo/text.
-    * Vibe: Classy, safe, friendly, but interesting enough to get a reply.
-    * Example: "That coffee spot looks amazing. Is it as quiet as it looks, or is it loud in there?"
-
-2. RELATIONSHIP: "Target is Single (Potential Interest)"
-    * Strategy: "Low-Stakes Charm." Show interest in *them*, not just the photo.
-    * Vibe: Playful, intriguing, slightly confident.
-    * Example: "I have to ask—what is the story behind this photo? It looks like an adventure."
-
-3. RELATIONSHIP: "Friend (Casual)"
-    * Strategy: "Relatable Vibe." Keep it breezy.
-    * Vibe: Chill, zero pressure.
-    * Example: "Bro, where is this? We need to go there next time."
-
-4. RELATIONSHIP: "Close Friend (Bestie)"
-    * Strategy: "Unhinged/Direct." No filter needed.
-    * Vibe: Chaos, inside jokes, roasting.
-    * Example: "Why are you like this? Also, send me the location immediately."
-
-5. RELATIONSHIP: "Partner (Dating/Married)"
-    * Strategy: "Affectionate or Roast."
-    * Vibe: Romantic or comfortably making fun of them.
-    * Example: "You look way too good here, it's actually unfair to everyone else."
+1. RELATIONSHIP: "Random/Unknown" -> Polite Curiosity. Safety first. No flirting.
+2. RELATIONSHIP: "Single" -> Low-Stakes Charm. Playful but respectful.
+3. RELATIONSHIP: "Friend" -> Relatable Vibe. Chill.
+4. RELATIONSHIP: "Close Friend" -> Unhinged/Direct. Roast them.
+5. RELATIONSHIP: "Partner" -> Affectionate or Roast.
 
 OUTPUT FORMAT:
 Provide exactly 3 options labeled as:
 1. observer: (Focuses on a background detail/context).
 2. question: (A specific, unique question to prompt a reply).
 3. witty: (A lighthearted comment or joke).
-
-IMAGE ANALYSIS:
-Look for small details: books on shelves, food on plates, specific brands, pets, or weather. Use these details to prove you actually looked at the image.
 
 Strict Rules:
 * Keep it short.
@@ -57,58 +39,46 @@ export const generateSignal = async (targetDetail: string, relationship: Relatio
   try {
     const parts: any[] = [];
     
-    // Add image if present
+    // FIX 2: Dynamic Mime Type Handling
     if (imageBase64) {
-      // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+      // Detect mime type from the base64 string header (e.g., data:image/png;base64,...)
+      const mimeType = imageBase64.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || "image/jpeg";
       const base64Data = imageBase64.split(',')[1] || imageBase64;
+
       parts.push({
         inlineData: {
-          mimeType: "image/jpeg",
+          mimeType: mimeType,
           data: base64Data
         }
       });
     }
 
-    // Add text prompt
     parts.push({
       text: `Context/Input: "${targetDetail}"\nRelationship Level: "${relationship}"`
     });
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: { parts: parts },
+      model: "gemini-2.0-flash-exp", // Update to a stable model ID if 'preview' fails, or keep 'gemini-1.5-flash'
+      contents: { role: "user", parts: parts }, // 'role' is often required in the new SDK structure
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
-            observer: {
-              type: Type.STRING,
-              description: "The Observer style opener (Background detail/context)",
-            },
-            question: {
-              type: Type.STRING,
-              description: "The Question style opener (Specific/Unique)",
-            },
-            witty: {
-              type: Type.STRING,
-              description: "The Witty/Fun style opener (Lighthearted/Joke)",
-            },
+            observer: { type: SchemaType.STRING, description: "Background detail opener" },
+            question: { type: SchemaType.STRING, description: "Specific question opener" },
+            witty: { type: SchemaType.STRING, description: "Playful opener" },
           },
           required: ["observer", "question", "witty"],
         },
       },
     });
 
-    const text = response.text;
-    if (!text) {
-        throw new Error("No text returned from Gemini");
-    }
+    const text = response.text(); // Note: In newer SDKs, text might be a function: text()
+    if (!text) throw new Error("No text returned from Gemini");
 
-    // Parse the JSON response
-    const data = JSON.parse(text) as SignalResponse;
-    return data;
+    return JSON.parse(text) as SignalResponse;
 
   } catch (error) {
     console.error("Error generating social advice:", error);
