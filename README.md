@@ -1,11 +1,15 @@
-<div align="center">
+# 🌊 Social Signal AI (formerly First Convo Starter)
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Stop sending "Hey." Start sending messages that actually get replies.
 
-  <h1>Built with AI Studio</h2>
+Social Signal is a React-based AI application that generates unique, polite, and context-aware conversation starters. Unlike generic chatbots, it analyzes **relationship dynamics** (Stranger vs. Partner) and uses **Multimodal Vision AI** to scan uploaded images for conversation hooks.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+### 🚀 Key Features
+* **Relationship Context Engine:** Tailors tone strictly based on safety and closeness (e.g., prevents flirting with "Unknown" connections).
+* **Visual Analysis:** Upload a photo, and the AI identifies background details (books, locations, pets) to ask smart questions.
+* **Anti-Cringe Guard:** Specifically prompted to avoid generic pickup lines and boring small talk.
+* **Privacy First:** Stateless processing—no images are stored.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+### 🛠️ Tech Stack
+* **Frontend:** React + TypeScript (Vite)
+* **Styling:** CSS / Tailwind
